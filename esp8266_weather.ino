@@ -17,6 +17,8 @@ const int   UMBRELLA_STATE_UNKNOWN[STATE_COUNT] = {-1, -1, -1, -1, -1, -1, -1, -
 int umbrellaState[STATE_COUNT];
 // Variable to keep track of when we turned on the LEDs.  So, we can turn them off.
 long pixelFlashTime = 0;
+// Keep cache update time
+long cacheRefreshTime = 0;
 
 // LED strip
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(LED_COUNT, PIN_PIXEL, NEO_GRB + NEO_KHZ800);
@@ -65,6 +67,11 @@ void setPixel(int i, uint32_t color) {
  * Query weather API and populate the hourly forecasts for the chance it might rain.
  */
 void fetchUmbrellaState() {
+  if (cacheRefreshTime > 0 && millis() - cacheRefreshTime < CACHE_TTL) {
+    // It's been less than the cache refresh time, don't go online.
+    Serial.println("Cache still fresh.");
+    return;
+  }
   // Get a web client.
   WiFiClient client;
   // Connect to weather API service
@@ -94,6 +101,8 @@ void fetchUmbrellaState() {
     s = c + 1;
     i += 1;
   }
+  // Set cache refresh time.
+  cacheRefreshTime = millis();
 }
 /**
  * Use the umbrellaState and display the LEDs depending on the chance of rain.
