@@ -7,7 +7,8 @@ const char* PASSWORD = "<PASSWORD>";
 const char* LOCATION = "<LON>,<LAT>";
 const char* KEY      = "<API KEY>";
 
-const int PIN_PIR   = 12;
-const int PIN_PIXEL = 13;
+const int PIN_PIR   = <PIN>;
+const int PIN_PIXEL = <PIN>;
+const int LED_COUNT = <COUNT>;
 
 #endif
