@@ -4,13 +4,12 @@
 
 // Constatnts to access the API
 const char*  HOST = "api.shoulditakeanumbrella.com";
-const String URL  = String("/api/hourly/") + LOCATION;
-const int   PORT = 80;
+const String URL  = String("/api/hourly/") + LOCATION + "?key=" + KEY;
+const int    PORT = 80;
 
 // How long to keep the LEDs on after movement is no longer detencted.
 const int   FLASH_DELAY = 5000;
 
-// Number of hourly statuses to maintain (currently 12 hours).
 const int   STATE_COUNT = 12;
 // Initialization array
 const int   UMBRELLA_STATE_UNKNOWN[STATE_COUNT] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
@@ -20,7 +19,7 @@ int umbrellaState[STATE_COUNT];
 long pixelFlashTime = 0;
 
 // LED strip
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(30, PIN_PIXEL, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(LED_COUNT, PIN_PIXEL, NEO_GRB + NEO_KHZ800);
 // Some colors
 const uint32_t OFF    = pixels.Color(0,   0,   0);
 const uint32_t RED    = pixels.Color(255, 0,   0);
@@ -46,8 +45,20 @@ void setPixels(uint32_t color) {
  * into account.
  */
 void setPixel(int i, uint32_t color) {
-  pixels.setPixelColor(3 + i * 2, color);
-  pixels.setPixelColor(3 + i * 2 + 1, color);
+  int n = pixels.numPixels();
+  if (n >= STATE_COUNT) {
+    // if we have more LEDs then states (or the same), use more LEDs for each state.
+    // m is the multiplier (how many LEDs per state)
+    int m = n / STATE_COUNT;
+    // s is the shift count, if we have an uneven destribution, shift LEDs so they light up in the middle.
+    int s = (n - (m * STATE_COUNT)) / 2;
+    for (int l = 0; l < m; ++l) {
+      pixels.setPixelColor(s + (i * m + l) , color);
+    }
+  } else if (i < n) {
+    // If we have less LEDs then states, show fewer states
+    pixels.setPixelColor(i , color);
+  }
 }
 
 /**
