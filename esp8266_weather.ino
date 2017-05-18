@@ -7,9 +7,12 @@ const char*  HOST = "api.shoulditakeanumbrella.com";
 const String URL  = String("/api/hourly/") + LOCATION + "?key=" + KEY;
 const int    PORT = 80;
 
+// Percent battery to show a warning for.
+const int   LOW_BATT = 50;
+
 // How long to keep the LEDs on after movement is no longer detencted.
 const int   FLASH_DELAY = 5000;
-
+// Number of hours to show.
 const int   STATE_COUNT = 12;
 // Initialization array
 const int   UMBRELLA_STATE_UNKNOWN[STATE_COUNT] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
@@ -24,12 +27,13 @@ long cacheRefreshTime = 0;
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(LED_COUNT, PIN_PIXEL, NEO_GRB + NEO_KHZ800);
 // Some colors
 const uint32_t OFF    = pixels.Color(0,   0,   0);
-const uint32_t RED    = pixels.Color(255, 0,   0);
-const uint32_t GREEN  = pixels.Color(0,   255, 0);
+const uint32_t RED    = pixels.Color(16,  0,   0);
+const uint32_t GREEN  = pixels.Color(0,   64,  0);
 const uint32_t YELLOW = pixels.Color(178, 77,  0);
 const uint32_t ORANGE = pixels.Color(255, 77,  0);
 const uint32_t BLUE   = pixels.Color(0,   0,   255);
-const uint32_t WHITE  = pixels.Color(255, 255, 255);
+const uint32_t WHITE  = pixels.Color(128, 128, 128);
+const uint32_t GREY   = pixels.Color(16,  16,  16);
 
 /**
  * Sets all the LEDs to the same color.
@@ -48,19 +52,24 @@ void setPixels(uint32_t color) {
  */
 void setPixel(int i, uint32_t color) {
   int n = pixels.numPixels();
-  if (n >= STATE_COUNT) {
-    // if we have more LEDs then states (or the same), use more LEDs for each state.
-    // m is the multiplier (how many LEDs per state)
-    int m = n / STATE_COUNT;
-    // s is the shift count, if we have an uneven destribution, shift LEDs so they light up in the middle.
-    int s = (n - (m * STATE_COUNT)) / 2;
-    for (int l = 0; l < m; ++l) {
-      pixels.setPixelColor(s + (i * m + l) , color);
-    }
-  } else if (i < n) {
-    // If we have less LEDs then states, show fewer states
-    pixels.setPixelColor(i , color);
+  if (n < STATE_COUNT + 2) {
+    // Need at least STATE_COUNT + 2 LEDs for the edges.
+    pixels.setPixelColor(i, RED);
+    return;
   }
+  // if we have more LEDs then states (or the same), use more LEDs for each state.
+  // m is the multiplier (how many LEDs per state)
+  int m = n / STATE_COUNT;
+  // s is the shift count, if we have an uneven destribution, shift LEDs so they light up in the middle.
+  int s = (n - (m * STATE_COUNT)) / 2;
+  for (int l = 0; l < m; ++l) {
+    pixels.setPixelColor(s + (i * m + l) , color);
+  }
+
+  // Mark edges.  If battery is low, mark in red.
+  uint32_t c = batteryLevel() > LOW_BATT ? GREY : RED;
+  pixels.setPixelColor(s - 1, c);
+  pixels.setPixelColor(n - s, c);
 }
 
 /**
@@ -123,6 +132,23 @@ void showUmbrellaState() {
 }
 
 /**
+ * Get battery level as a percent.
+ */
+int batteryLevel() {
+  // read the battery level from the ESP8266 analog in pin.
+  // analog read level is 10 bit 0-1023 (0V-1V).
+  // our 1M & 220K voltage divider takes the max
+  // lipo value of 4.2V and drops it to 0.758V max.
+  // this means our min analog read value should be 580 (3.14V)
+  // and the max analog read value should be 774 (4.2V).
+  int level = analogRead(A0);
+  // convert battery level to percent
+  int percent = map(level, 580, 774, 0, 100);
+  Serial.printf("Battery level: %d, %d%%\n", level, percent);
+  return percent;
+}
+
+/**
  * Setup (runs once).
  */
 void setup() {
@@ -135,6 +161,7 @@ void setup() {
 
   // Set up LED strip.
   pixels.begin();
+  pixels.setBrightness(16);
   pixels.show();
 
   // Set to green, this means we're trying to connect to the wifi.
