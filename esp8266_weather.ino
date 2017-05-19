@@ -120,11 +120,14 @@ void showUmbrellaState() {
   Serial.println("Displaying Umbrella:");
   for (int i = 0; i < STATE_COUNT; ++i) {
     int u = umbrellaState[i];
-    if        (u < 0)    { setPixel(i, RED);   Serial.printf("%3d: RED\n", u);   // Unknown
-    } else if (u <= 30)  { setPixel(i, OFF);   Serial.printf("%3d: OFF\n", u);   // No rain
-    } else if (u <= 70)  { setPixel(i, WHITE); Serial.printf("%3d: WHITE\n", u); // Maybe rain
-    } else if (u <= 100) { setPixel(i, BLUE);  Serial.printf("%3d: BLUE\n", u);  // Rain
-    } else               { setPixel(i, WHITE); Serial.printf("%3d: WHITE\n", u); // Error
+    if        (0  <= u && u <  30)  { setPixel(i, OFF);   Serial.printf("%3d: OFF\n", u);   // No rain
+    } else if (30 <= u && u <  70)  { setPixel(i, WHITE); Serial.printf("%3d: WHITE\n", u); // Maybe rain
+    } else if (70 <= u && u <= 100) { setPixel(i, BLUE);  Serial.printf("%3d: BLUE\n", u);  // Rain
+    } else { // Error
+      setPixel(i, RED);
+      Serial.printf("%3d: WHITE\n", u);
+      // Invalidate cache
+      cacheRefreshTime = 0;
     }
   }
   pixels.show();
